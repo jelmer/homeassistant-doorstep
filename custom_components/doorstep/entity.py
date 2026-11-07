@@ -1,4 +1,4 @@
-"""Base entity for the mailroom integration."""
+"""Base entity for the doorstep integration."""
 
 from __future__ import annotations
 
@@ -11,16 +11,16 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import Parcel, Pickup
 from .const import DOMAIN
-from .coordinator import MailroomConfigEntry, MailroomCoordinator
+from .coordinator import DoorstepConfigEntry, DoorstepCoordinator
 
 
-class MailroomEntity(CoordinatorEntity[MailroomCoordinator]):
-    """An entity backed by a mailroom instance."""
+class DoorstepEntity(CoordinatorEntity[DoorstepCoordinator]):
+    """An entity backed by a doorstep instance."""
 
     _attr_has_entity_name = True
 
     def __init__(
-        self, coordinator: MailroomCoordinator, entry: MailroomConfigEntry, key: str
+        self, coordinator: DoorstepCoordinator, entry: DoorstepConfigEntry, key: str
     ) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_{key}"

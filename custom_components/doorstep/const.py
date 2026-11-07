@@ -1,9 +1,9 @@
-"""Constants for the mailroom integration."""
+"""Constants for the doorstep integration."""
 
 from datetime import timedelta
 
-DOMAIN = "mailroom"
+DOMAIN = "doorstep"
 
-# mailroom reads its records from local disk on every request, so asking
+# doorstep reads its records from local disk on every request, so asking
 # often is cheap. Its own carrier polling runs on a much longer interval.
 UPDATE_INTERVAL = timedelta(minutes=5)

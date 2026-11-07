@@ -1,4 +1,4 @@
-"""Tests for the mailroom API client."""
+"""Tests for the doorstep API client."""
 
 from __future__ import annotations
 
@@ -13,13 +13,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.mailroom.api import (
+from custom_components.doorstep.api import (
     DeliveryStatus,
-    MailroomAuthError,
-    MailroomClient,
-    MailroomConnectionError,
-    MailroomNotFoundError,
-    MailroomResponseError,
+    DoorstepAuthError,
+    DoorstepClient,
+    DoorstepConnectionError,
+    DoorstepNotFoundError,
+    DoorstepResponseError,
     Parcel,
     Parcels,
     Pickup,
@@ -33,13 +33,13 @@ from . import BASE_URL, STATS, mock_api, parcel_json
 @pytest.fixture
 async def client(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
-) -> MailroomClient:
+) -> DoorstepClient:
     # Depends on the mocker so the session is created after it is in place.
-    return MailroomClient(async_get_clientsession(hass), BASE_URL)
+    return DoorstepClient(async_get_clientsession(hass), BASE_URL)
 
 
 async def test_parcels(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     mock_api(aioclient_mock)
 
@@ -92,7 +92,7 @@ async def test_parcels(
 
 
 async def test_a_parcel_waiting_to_be_collected(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     pickup = {
         "location": "Bruna Amsterdam CS",
@@ -120,8 +120,8 @@ async def test_a_parcel_waiting_to_be_collected(
     ]
 
 
-async def test_a_mailroom_that_does_not_report_pickups(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+async def test_a_doorstep_that_does_not_report_pickups(
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     parcel = parcel_json("A1", "OnItsWay")
     del parcel["pickup"]
@@ -133,7 +133,7 @@ async def test_a_mailroom_that_does_not_report_pickups(
 
 
 async def test_stats(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     mock_api(aioclient_mock)
 
@@ -141,13 +141,13 @@ async def test_stats(
 
 
 @pytest.mark.parametrize(
-    "base_url", ["http://mailroom.test/mailroom", "http://mailroom.test/mailroom/"]
+    "base_url", ["http://doorstep.test/doorstep", "http://doorstep.test/doorstep/"]
 )
 async def test_base_path_is_kept(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker, base_url: str
 ) -> None:
-    mock_api(aioclient_mock, base_url="http://mailroom.test/mailroom")
-    client = MailroomClient(async_get_clientsession(hass), base_url)
+    mock_api(aioclient_mock, base_url="http://doorstep.test/doorstep")
+    client = DoorstepClient(async_get_clientsession(hass), base_url)
 
     assert await client.stats() == Stats(total=40, delivered=37)
 
@@ -164,8 +164,8 @@ async def test_base_path_is_kept(
         ("Unknown", DeliveryStatus.UNKNOWN),
     ],
 )
-async def test_every_status_mailroom_emits_is_understood(
-    client: MailroomClient,
+async def test_every_status_doorstep_emits_is_understood(
+    client: DoorstepClient,
     aioclient_mock: AiohttpClientMocker,
     api_name: str,
     status: DeliveryStatus,
@@ -190,29 +190,29 @@ async def test_every_status_mailroom_emits_is_understood(
     ],
 )
 async def test_an_unexpected_document_is_an_error(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker, document: Any
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker, document: Any
 ) -> None:
     mock_api(aioclient_mock, document)
 
-    with pytest.raises(MailroomResponseError):
+    with pytest.raises(DoorstepResponseError):
         await client.parcels()
 
 
 async def test_an_http_error_is_an_error(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     aioclient_mock.get(f"{BASE_URL}/api/stats", status=500, json=STATS)
 
-    with pytest.raises(MailroomResponseError, match="HTTP 500"):
+    with pytest.raises(DoorstepResponseError, match="HTTP 500"):
         await client.stats()
 
 
 async def test_a_body_that_is_not_json_is_an_error(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     aioclient_mock.get(f"{BASE_URL}/api/stats", text="<html>hello</html>")
 
-    with pytest.raises(MailroomResponseError):
+    with pytest.raises(DoorstepResponseError):
         await client.stats()
 
 
@@ -220,11 +220,11 @@ async def test_a_body_that_is_not_json_is_an_error(
     "error", [aiohttp.ClientConnectionError("refused"), TimeoutError()]
 )
 async def test_failing_to_connect_is_a_connection_error(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker, error: Exception
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker, error: Exception
 ) -> None:
     aioclient_mock.get(f"{BASE_URL}/api/parcels", exc=error)
 
-    with pytest.raises(MailroomConnectionError):
+    with pytest.raises(DoorstepConnectionError):
         await client.parcels()
 
 
@@ -232,7 +232,7 @@ async def test_failing_to_connect_is_a_connection_error(
     "tracking_number", ["", "..", "TQ1/refresh", "TQ 1", "TQ\u00e9"]
 )
 async def test_an_invalid_tracking_number_is_refused_before_any_request(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker, tracking_number: str
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker, tracking_number: str
 ) -> None:
     with pytest.raises(ValueError):
         await client.add_parcel(tracking_number)
@@ -245,7 +245,7 @@ async def test_an_invalid_tracking_number_is_refused_before_any_request(
 
 
 async def test_refresh_parcel(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     record = {"trackingNumber": "TQ-1_a", "deliveryStatus": "Delivered"}
     aioclient_mock.post(
@@ -262,45 +262,45 @@ async def test_refresh_parcel(
     "document", [{"outcome": "updated"}, {"outcome": 1, "parcel": {}}, []]
 )
 async def test_an_unexpected_refresh_result_is_an_error(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker, document: Any
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker, document: Any
 ) -> None:
     aioclient_mock.post(f"{BASE_URL}/api/parcel/TQ1/refresh", json=document)
 
-    with pytest.raises(MailroomResponseError):
+    with pytest.raises(DoorstepResponseError):
         await client.refresh_parcel("TQ1")
 
 
-async def test_removing_a_parcel_mailroom_does_not_have(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+async def test_removing_a_parcel_doorstep_does_not_have(
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     aioclient_mock.delete(f"{BASE_URL}/api/parcel/TQ1", status=404)
 
-    with pytest.raises(MailroomNotFoundError, match="^mailroom has no parcel TQ1$"):
+    with pytest.raises(DoorstepNotFoundError, match="^doorstep has no parcel TQ1$"):
         await client.remove_parcel("TQ1")
 
 
-async def test_adding_a_parcel_mailroom_refuses(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker
+async def test_adding_a_parcel_doorstep_refuses(
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
 ) -> None:
     aioclient_mock.get(f"{BASE_URL}/api/parcel/TQ1", status=404)
     aioclient_mock.put(f"{BASE_URL}/api/parcel/TQ1", status=400)
 
-    with pytest.raises(MailroomResponseError, match="HTTP 400"):
+    with pytest.raises(DoorstepResponseError, match="HTTP 400"):
         await client.add_parcel("TQ1")
 
 
 @pytest.mark.parametrize("status", [401, 403])
 async def test_refused_credentials_are_an_auth_error(
-    client: MailroomClient, aioclient_mock: AiohttpClientMocker, status: int
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker, status: int
 ) -> None:
     aioclient_mock.get(f"{BASE_URL}/api/stats", status=status)
 
-    with pytest.raises(MailroomAuthError, match=f"HTTP {status}"):
+    with pytest.raises(DoorstepAuthError, match=f"HTTP {status}"):
         await client.stats()
 
 
 @pytest.fixture
-async def guarded_mailroom(
+async def guarded_doorstep(
     socket_enabled: None,
 ) -> AsyncGenerator[test_utils.TestServer]:
     """A real server that only answers `someone` with the password `secret`."""
@@ -326,21 +326,21 @@ async def guarded_mailroom(
     [(None, None), ("someone", None), ("someone", "wrong"), ("other", "secret")],
 )
 async def test_basic_auth_is_needed_where_a_proxy_asks_for_it(
-    guarded_mailroom: test_utils.TestServer, username: str | None, password: str | None
+    guarded_doorstep: test_utils.TestServer, username: str | None, password: str | None
 ) -> None:
     async with aiohttp.ClientSession() as session:
-        client = MailroomClient(
-            session, str(guarded_mailroom.make_url("")), username, password
+        client = DoorstepClient(
+            session, str(guarded_doorstep.make_url("")), username, password
         )
 
-        with pytest.raises(MailroomAuthError):
+        with pytest.raises(DoorstepAuthError):
             await client.stats()
 
 
-async def test_basic_auth_is_sent(guarded_mailroom: test_utils.TestServer) -> None:
+async def test_basic_auth_is_sent(guarded_doorstep: test_utils.TestServer) -> None:
     async with aiohttp.ClientSession() as session:
-        client = MailroomClient(
-            session, str(guarded_mailroom.make_url("")), "someone", "secret"
+        client = DoorstepClient(
+            session, str(guarded_doorstep.make_url("")), "someone", "secret"
         )
 
         assert await client.stats() == Stats(total=40, delivered=37)

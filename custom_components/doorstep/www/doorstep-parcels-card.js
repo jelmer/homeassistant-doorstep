@@ -1,4 +1,4 @@
-// Dashboard card listing the parcels of a mailroom sensor.
+// Dashboard card listing the parcels of a doorstep sensor.
 //
 // Any of the integration's sensors with a `parcels` attribute will do as
 // `entity`. Everything shown comes from mail and carrier APIs, so it only
@@ -21,7 +21,7 @@ const FIELD_LABELS = {
   max_items: "Most parcels to show per list",
 };
 
-const PARCEL_SENSORS = { filter: { integration: "mailroom", domain: "sensor" } };
+const PARCEL_SENSORS = { filter: { integration: "doorstep", domain: "sensor" } };
 
 const STYLE = `
   .list + .list {
@@ -122,7 +122,7 @@ function daysFromToday(date) {
   return Math.round((day - today) / 86400000);
 }
 
-class MailroomParcelsCard extends HTMLElement {
+class DoorstepParcelsCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
@@ -339,14 +339,14 @@ class MailroomParcelsCard extends HTMLElement {
 
 // The frontend may be told about this file twice, by the integration and
 // by a dashboard resource someone added by hand.
-if (!customElements.get("mailroom-parcels-card")) {
-  customElements.define("mailroom-parcels-card", MailroomParcelsCard);
+if (!customElements.get("doorstep-parcels-card")) {
+  customElements.define("doorstep-parcels-card", DoorstepParcelsCard);
   window.customCards = window.customCards ?? [];
   window.customCards.push({
-    type: "mailroom-parcels-card",
-    name: "Mailroom parcels",
-    description: "The parcels a mailroom sensor counts, with status and dates.",
+    type: "doorstep-parcels-card",
+    name: "Doorstep parcels",
+    description: "The parcels a doorstep sensor counts, with status and dates.",
     preview: true,
-    documentationURL: "https://github.com/jelmer/homeassistant-mailroom#dashboard-card",
+    documentationURL: "https://github.com/jelmer/homeassistant-doorstep#dashboard-card",
   });
 }

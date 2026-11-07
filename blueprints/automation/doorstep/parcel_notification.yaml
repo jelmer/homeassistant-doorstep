@@ -1,17 +1,17 @@
 blueprint:
-  name: Mailroom parcel notification
+  name: Doorstep parcel notification
   description: Send a notification to a device when a parcel reaches one of the chosen statuses.
   domain: automation
-  source_url: https://github.com/jelmer/homeassistant-mailroom/blob/master/blueprints/automation/mailroom/parcel_notification.yaml
+  source_url: https://github.com/jelmer/homeassistant-doorstep/blob/master/blueprints/automation/doorstep/parcel_notification.yaml
   author: Jelmer Vernooĳ
   input:
     parcel_event:
       name: Parcel updates
-      description: The "Parcel update" entity of the mailroom to watch.
+      description: The "Parcel update" entity to watch.
       selector:
         entity:
           filter:
-            integration: mailroom
+            integration: doorstep
             domain: event
     statuses:
       name: Statuses

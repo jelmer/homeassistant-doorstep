@@ -1,4 +1,4 @@
-"""Client for mailroom's JSON API."""
+"""Client for doorstep's JSON API."""
 
 from __future__ import annotations
 
@@ -16,39 +16,39 @@ from yarl import URL
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 
-class MailroomError(Exception):
-    """Base class for errors talking to mailroom."""
+class DoorstepError(Exception):
+    """Base class for errors talking to doorstep."""
 
 
-class MailroomConnectionError(MailroomError):
-    """Raised when mailroom could not be reached."""
+class DoorstepConnectionError(DoorstepError):
+    """Raised when doorstep could not be reached."""
 
 
-class MailroomAuthError(MailroomError):
-    """Raised when whatever guards mailroom does not accept our credentials."""
+class DoorstepAuthError(DoorstepError):
+    """Raised when whatever guards doorstep does not accept our credentials."""
 
 
-class MailroomResponseError(MailroomError):
-    """Raised when the answer is not what mailroom's API promises."""
+class DoorstepResponseError(DoorstepError):
+    """Raised when the answer is not what doorstep's API promises."""
 
 
-class MailroomNotFoundError(MailroomResponseError):
-    """Raised when mailroom has nothing at the address asked for."""
+class DoorstepNotFoundError(DoorstepResponseError):
+    """Raised when doorstep has nothing at the address asked for."""
 
 
-class MailroomPreconditionFailedError(MailroomResponseError):
-    """Raised when mailroom refuses a request because its condition is not met."""
+class DoorstepPreconditionFailedError(DoorstepResponseError):
+    """Raised when doorstep refuses a request because its condition is not met."""
 
 
-class MailroomParcelExistsError(MailroomError):
-    """Raised when adding a parcel mailroom already has a record for."""
+class DoorstepParcelExistsError(DoorstepError):
+    """Raised when adding a parcel doorstep already has a record for."""
 
 
 class DeliveryStatus(StrEnum):
     """Where a parcel is in its journey.
 
     The values double as entity states and event types, so they are slugs
-    rather than the names mailroom itself uses.
+    rather than the names doorstep itself uses.
     """
 
     SCHEDULED = "scheduled"
@@ -101,17 +101,17 @@ class Parcel:
 
 @dataclass(frozen=True)
 class Parcels:
-    """The overview mailroom's dashboard shows."""
+    """The overview doorstep's dashboard shows."""
 
     # Parcels that have not reached a terminal state.
     current: list[Parcel]
-    # Delivered or returned parcels still within mailroom's retention window.
+    # Delivered or returned parcels still within doorstep's retention window.
     previous: list[Parcel]
 
 
 @dataclass(frozen=True)
 class Stats:
-    """Counts over every record mailroom has on disk."""
+    """Counts over every record doorstep has on disk."""
 
     total: int
     delivered: int
@@ -121,7 +121,7 @@ class Stats:
 class RefreshResult:
     """What asking the carrier about a parcel came to."""
 
-    # mailroom's own word for it: `updated`, `unchanged`, `no_carrier`,
+    # doorstep's own word for it: `updated`, `unchanged`, `no_carrier`,
     # `carrier_not_configured`, `postcode_required` or `no_record`.
     outcome: str
     # The record as it is on disk afterwards.
@@ -129,9 +129,9 @@ class RefreshResult:
 
 
 def is_valid_tracking_number(tracking_number: str) -> bool:
-    """Whether mailroom accepts this as a tracking number.
+    """Whether doorstep accepts this as a tracking number.
 
-    mailroom uses the tracking number as a file name, and only takes ASCII
+    doorstep uses the tracking number as a file name, and only takes ASCII
     letters, digits, `-` and `_`.
     """
     return tracking_number != "" and all(
@@ -166,7 +166,7 @@ def _parse_parcel(raw: dict[str, Any]) -> Parcel:
         overdue=raw["overdue"],
         delivered_at=_optional(datetime.fromisoformat, raw["delivered_at"]),
         last_polled=_optional(datetime.fromisoformat, raw["last_polled"]),
-        # A mailroom from before it reported pickups leaves the key out.
+        # A doorstep from before it reported pickups leaves the key out.
         pickup=_parse_pickup(raw.get("pickup")),
     )
 
@@ -190,9 +190,9 @@ def _missing_parcel(tracking_number: str) -> Generator[None]:
     """Name the parcel that was not found rather than the URL that was asked."""
     try:
         yield
-    except MailroomNotFoundError as err:
-        raise MailroomNotFoundError(
-            f"mailroom has no parcel {tracking_number}"
+    except DoorstepNotFoundError as err:
+        raise DoorstepNotFoundError(
+            f"doorstep has no parcel {tracking_number}"
         ) from err
 
 
@@ -210,7 +210,7 @@ def _new_parcel(
     postcode: str | None,
     now: datetime,
 ) -> dict[str, Any]:
-    """Build the record mailroom's own add-a-parcel form would."""
+    """Build the record doorstep's own add-a-parcel form would."""
     document: dict[str, Any] = {
         "@type": "ParcelDelivery",
         "trackingNumber": tracking_number,
@@ -233,8 +233,8 @@ def _new_parcel(
     return document
 
 
-class MailroomClient:
-    """Client for a mailroom instance."""
+class DoorstepClient:
+    """Client for a doorstep instance."""
 
     def __init__(
         self,
@@ -245,7 +245,7 @@ class MailroomClient:
     ) -> None:
         """Create a client.
 
-        mailroom has no authentication of its own. `username` and `password`
+        doorstep has no authentication of its own. `username` and `password`
         are for a reverse proxy in front of it that asks for HTTP basic auth.
         """
         self._session = session
@@ -276,17 +276,17 @@ class MailroomClient:
     ) -> None:
         """File a new parcel, on its way.
 
-        `carrier` is the id mailroom knows the carrier by, such as `dhl`.
-        Raises MailroomParcelExistsError rather than replace a record.
+        `carrier` is the id doorstep knows the carrier by, such as `dhl`.
+        Raises DoorstepParcelExistsError rather than replace a record.
         """
         url = self._parcel_url(tracking_number)
-        exists = MailroomParcelExistsError(
-            f"mailroom already has a parcel {tracking_number}"
+        exists = DoorstepParcelExistsError(
+            f"doorstep already has a parcel {tracking_number}"
         )
         # A plain PUT replaces a record wholesale, history included, and a
-        # mailroom from before it understood If-None-Match treats this one as
+        # doorstep from before it understood If-None-Match treats this one as
         # plain. Looking first keeps that from costing a record.
-        # TODO(jelmer): Drop the look once no such mailroom is around.
+        # TODO(jelmer): Drop the look once no such doorstep is around.
         if await self._exists(url):
             raise exists
         document = _new_parcel(
@@ -296,19 +296,19 @@ class MailroomClient:
             await self._request(
                 "PUT", url, json=document, headers={"If-None-Match": "*"}
             )
-        except MailroomPreconditionFailedError as err:
+        except DoorstepPreconditionFailedError as err:
             raise exists from err
 
     async def remove_parcel(self, tracking_number: str) -> None:
-        """Delete a parcel's record. Raises MailroomNotFoundError if absent."""
+        """Delete a parcel's record. Raises DoorstepNotFoundError if absent."""
         url = self._parcel_url(tracking_number)
         with _missing_parcel(tracking_number):
             await self._request("DELETE", url)
 
     async def refresh_parcel(self, tracking_number: str) -> RefreshResult:
-        """Have mailroom ask the carrier about a parcel now.
+        """Have doorstep ask the carrier about a parcel now.
 
-        Raises MailroomNotFoundError if mailroom has no such parcel.
+        Raises DoorstepNotFoundError if doorstep has no such parcel.
         """
         url = self._parcel_url(tracking_number) / "refresh"
         with _missing_parcel(tracking_number):
@@ -323,7 +323,7 @@ class MailroomClient:
     async def _exists(self, url: URL) -> bool:
         try:
             await self._request("GET", url)
-        except MailroomNotFoundError:
+        except DoorstepNotFoundError:
             return False
         return True
 
@@ -332,7 +332,7 @@ class MailroomClient:
         try:
             return parse(body)
         except (KeyError, TypeError, ValueError) as err:
-            raise MailroomResponseError(
+            raise DoorstepResponseError(
                 f"{url} returned an unexpected document: {err!r}"
             ) from err
 
@@ -343,7 +343,7 @@ class MailroomClient:
         json: Any = None,
         headers: dict[str, str] | None = None,
     ) -> Any:
-        """Return the decoded body, or None where mailroom sends none."""
+        """Return the decoded body, or None where doorstep sends none."""
         try:
             async with self._session.request(
                 method,
@@ -353,25 +353,25 @@ class MailroomClient:
                 timeout=REQUEST_TIMEOUT,
             ) as response:
                 if response.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
-                    raise MailroomAuthError(
+                    raise DoorstepAuthError(
                         f"{url} refused the credentials (HTTP {response.status})"
                     )
                 if response.status == HTTPStatus.NOT_FOUND:
-                    raise MailroomNotFoundError(f"{url} was not found")
+                    raise DoorstepNotFoundError(f"{url} was not found")
                 if response.status == HTTPStatus.PRECONDITION_FAILED:
-                    raise MailroomPreconditionFailedError(
+                    raise DoorstepPreconditionFailedError(
                         f"{url} did not meet the request's condition"
                     )
                 if response.status == HTTPStatus.NO_CONTENT:
                     return None
                 if response.status not in (HTTPStatus.OK, HTTPStatus.CREATED):
-                    raise MailroomResponseError(
+                    raise DoorstepResponseError(
                         f"{url} returned HTTP {response.status}"
                     )
                 return await response.json()
         except aiohttp.ClientResponseError as err:
-            raise MailroomResponseError(f"{url} did not return JSON: {err}") from err
+            raise DoorstepResponseError(f"{url} did not return JSON: {err}") from err
         except (aiohttp.ClientError, TimeoutError) as err:
-            raise MailroomConnectionError(f"Unable to reach {url}: {err}") from err
+            raise DoorstepConnectionError(f"Unable to reach {url}: {err}") from err
         except ValueError as err:
-            raise MailroomResponseError(f"{url} returned invalid JSON: {err}") from err
+            raise DoorstepResponseError(f"{url} returned invalid JSON: {err}") from err

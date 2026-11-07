@@ -1,4 +1,4 @@
-"""Tests for the mailroom actions."""
+"""Tests for the doorstep actions."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 from yarl import URL
 
-from custom_components.mailroom.const import DOMAIN
+from custom_components.doorstep.const import DOMAIN
 
 from . import BASE_URL, PARCELS, mock_api, parcel_json
 
@@ -26,7 +26,7 @@ TQ1_RECORD = {"@type": "ParcelDelivery", "trackingNumber": "TQ1"}
 
 
 def _writes(aioclient_mock: AiohttpClientMocker) -> list[tuple[str, URL, Any]]:
-    """The requests made so far that change something in mailroom."""
+    """The requests made so far that change something in doorstep."""
     return [
         (method, url, body)
         for method, url, body, _headers in aioclient_mock.mock_calls
@@ -34,7 +34,7 @@ def _writes(aioclient_mock: AiohttpClientMocker) -> list[tuple[str, URL, Any]]:
     ]
 
 
-async def test_add_parcel_asks_mailroom_not_to_replace_a_record(
+async def test_add_parcel_asks_doorstep_not_to_replace_a_record(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
@@ -59,7 +59,7 @@ async def test_actions_use_the_credentials_of_the_entry(
     mock_api(aioclient_mock)
     entry = MockConfigEntry(
         domain=DOMAIN,
-        title="Mailroom",
+        title="Doorstep",
         data={CONF_URL: BASE_URL, "username": "someone", "password": "secret"},
     )
     entry.add_to_hass(hass)
@@ -145,7 +145,7 @@ async def test_add_parcel_files_a_record_and_refreshes(
             },
         )
     ]
-    state = hass.states.get("sensor.mailroom_in_transit")
+    state = hass.states.get("sensor.doorstep_in_transit")
     assert state is not None
     assert state.state == "3"
 
@@ -203,7 +203,7 @@ async def test_add_parcel_does_not_replace_an_existing_record(
 
 @pytest.mark.parametrize("action", ["add_parcel", "refresh_parcel", "remove_parcel"])
 @pytest.mark.parametrize("tracking_number", ["", "..", "TQ1/refresh", "TQ 1"])
-async def test_an_invalid_tracking_number_never_reaches_mailroom(
+async def test_an_invalid_tracking_number_never_reaches_doorstep(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
@@ -220,7 +220,7 @@ async def test_an_invalid_tracking_number_never_reaches_mailroom(
     assert aioclient_mock.mock_calls == []
 
 
-async def test_refresh_parcel_returns_what_mailroom_made_of_it(
+async def test_refresh_parcel_returns_what_doorstep_made_of_it(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
@@ -258,7 +258,7 @@ async def test_remove_parcel_deletes_the_record_and_refreshes(
     await hass.async_block_till_done()
 
     assert _writes(aioclient_mock) == [("DELETE", URL(TQ1_URL), None)]
-    state = hass.states.get("sensor.mailroom_in_transit")
+    state = hass.states.get("sensor.doorstep_in_transit")
     assert state is not None
     assert state.state == "1"
 
@@ -270,7 +270,7 @@ async def test_remove_parcel_deletes_the_record_and_refreshes(
         ("remove_parcel", "delete", NEW9_URL),
     ],
 )
-async def test_a_parcel_mailroom_does_not_have_is_a_validation_error(
+async def test_a_parcel_doorstep_does_not_have_is_a_validation_error(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
@@ -280,13 +280,13 @@ async def test_a_parcel_mailroom_does_not_have_is_a_validation_error(
 ) -> None:
     aioclient_mock.request(method, url, status=404)
 
-    with pytest.raises(ServiceValidationError, match="^mailroom has no parcel NEW9$"):
+    with pytest.raises(ServiceValidationError, match="^doorstep has no parcel NEW9$"):
         await hass.services.async_call(
             DOMAIN, action, {"tracking_number": "NEW9"}, blocking=True
         )
 
 
-async def test_a_mailroom_that_is_down_is_an_error(
+async def test_a_doorstep_that_is_down_is_an_error(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
@@ -305,7 +305,7 @@ async def test_actions_need_a_loaded_entry(
     error = aiohttp.ClientConnectionError("refused")
     aioclient_mock.get(f"{BASE_URL}/api/parcels", exc=error)
     aioclient_mock.get(f"{BASE_URL}/api/stats", exc=error)
-    entry = MockConfigEntry(domain=DOMAIN, title="Mailroom", data={CONF_URL: BASE_URL})
+    entry = MockConfigEntry(domain=DOMAIN, title="Doorstep", data={CONF_URL: BASE_URL})
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id) is False
 
@@ -315,14 +315,14 @@ async def test_actions_need_a_loaded_entry(
         )
 
 
-async def test_actions_ask_which_mailroom_when_there_are_several(
+async def test_actions_ask_which_doorstep_when_there_are_several(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     config_entry: MockConfigEntry,
 ) -> None:
     other_url = "http://other.test"
     mock_api(aioclient_mock, base_url=other_url)
-    other = MockConfigEntry(domain=DOMAIN, title="Mailroom", data={CONF_URL: other_url})
+    other = MockConfigEntry(domain=DOMAIN, title="Doorstep", data={CONF_URL: other_url})
     other.add_to_hass(hass)
     assert await hass.config_entries.async_setup(other.entry_id)
     await hass.async_block_till_done()
@@ -346,7 +346,7 @@ async def test_actions_ask_which_mailroom_when_there_are_several(
         ("DELETE", URL(f"{other_url}/api/parcel/TQ1"), None)
     ]
 
-    with pytest.raises(ServiceValidationError, match="No loaded mailroom entry"):
+    with pytest.raises(ServiceValidationError, match="No loaded doorstep entry"):
         await hass.services.async_call(
             DOMAIN,
             "remove_parcel",

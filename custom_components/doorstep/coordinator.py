@@ -1,4 +1,4 @@
-"""DataUpdateCoordinator for mailroom."""
+"""DataUpdateCoordinator for doorstep."""
 
 from __future__ import annotations
 
@@ -11,27 +11,27 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import MailroomAuthError, MailroomClient, MailroomError, Parcels, Stats
+from .api import DoorstepAuthError, DoorstepClient, DoorstepError, Parcels, Stats
 from .const import DOMAIN, UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
-type MailroomConfigEntry = ConfigEntry[MailroomCoordinator]
+type DoorstepConfigEntry = ConfigEntry[DoorstepCoordinator]
 
 
 @dataclass(frozen=True)
-class MailroomData:
-    """One poll's worth of mailroom state."""
+class DoorstepData:
+    """One poll's worth of doorstep state."""
 
     parcels: Parcels
     stats: Stats
 
 
-class MailroomCoordinator(DataUpdateCoordinator[MailroomData]):
-    """Coordinator to fetch parcels and statistics from mailroom."""
+class DoorstepCoordinator(DataUpdateCoordinator[DoorstepData]):
+    """Coordinator to fetch parcels and statistics from doorstep."""
 
     def __init__(
-        self, hass: HomeAssistant, entry: MailroomConfigEntry, client: MailroomClient
+        self, hass: HomeAssistant, entry: DoorstepConfigEntry, client: DoorstepClient
     ) -> None:
         super().__init__(
             hass,
@@ -42,13 +42,13 @@ class MailroomCoordinator(DataUpdateCoordinator[MailroomData]):
         )
         self.client = client
 
-    async def _async_update_data(self) -> MailroomData:
+    async def _async_update_data(self) -> DoorstepData:
         try:
             parcels, stats = await asyncio.gather(
                 self.client.parcels(), self.client.stats()
             )
-        except MailroomAuthError as err:
+        except DoorstepAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
-        except MailroomError as err:
+        except DoorstepError as err:
             raise UpdateFailed(str(err)) from err
-        return MailroomData(parcels=parcels, stats=stats)
+        return DoorstepData(parcels=parcels, stats=stats)

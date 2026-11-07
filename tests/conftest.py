@@ -1,4 +1,4 @@
-"""Fixtures for the mailroom integration tests."""
+"""Fixtures for the doorstep integration tests."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from pytest_homeassistant_custom_component.common import (
 )
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.mailroom.const import DOMAIN, UPDATE_INTERVAL
+from custom_components.doorstep.const import DOMAIN, UPDATE_INTERVAL
 
 from . import BASE_URL, ENTRY_ID, mock_api
 
@@ -37,10 +37,10 @@ def in_memory_storage(hass_storage: dict[str, Any]) -> None:
 async def config_entry(
     hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
 ) -> MockConfigEntry:
-    """A mailroom entry, set up against the canned documents."""
+    """A doorstep entry, set up against the canned documents."""
     mock_api(aioclient_mock)
     entry = MockConfigEntry(
-        domain=DOMAIN, title="Mailroom", data={CONF_URL: BASE_URL}, entry_id=ENTRY_ID
+        domain=DOMAIN, title="Doorstep", data={CONF_URL: BASE_URL}, entry_id=ENTRY_ID
     )
     entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(entry.entry_id)

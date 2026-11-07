@@ -1,4 +1,4 @@
-"""Event platform for mailroom."""
+"""Event platform for doorstep."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from homeassistant.helpers.storage import Store
 
 from .api import DeliveryStatus, Parcels
 from .const import DOMAIN
-from .coordinator import MailroomConfigEntry, MailroomCoordinator
-from .entity import MailroomEntity, parcel_attributes
+from .coordinator import DoorstepConfigEntry, DoorstepCoordinator
+from .entity import DoorstepEntity, parcel_attributes
 
 STORAGE_VERSION = 1
 SAVE_DELAY = 1
@@ -18,15 +18,15 @@ SAVE_DELAY = 1
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: MailroomConfigEntry,
+    entry: DoorstepConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the mailroom event entity."""
+    """Set up the doorstep event entity."""
     async_add_entities([ParcelEvent(entry.runtime_data, entry)])
 
 
 def status_store(
-    hass: HomeAssistant, entry: MailroomConfigEntry
+    hass: HomeAssistant, entry: DoorstepConfigEntry
 ) -> Store[dict[str, str]]:
     """Return the store holding the status last reported for each parcel."""
     return Store(hass, STORAGE_VERSION, f"{DOMAIN}.{entry.entry_id}")
@@ -39,7 +39,7 @@ def _statuses(parcels: Parcels) -> dict[str, str]:
     }
 
 
-class ParcelEvent(MailroomEntity, EventEntity):
+class ParcelEvent(DoorstepEntity, EventEntity):
     """Fires when a parcel shows up or moves to another status.
 
     The event type is the status the parcel moved to. What was last reported
@@ -48,7 +48,7 @@ class ParcelEvent(MailroomEntity, EventEntity):
     """
 
     def __init__(
-        self, coordinator: MailroomCoordinator, entry: MailroomConfigEntry
+        self, coordinator: DoorstepCoordinator, entry: DoorstepConfigEntry
     ) -> None:
         super().__init__(coordinator, entry, "parcel")
         self._attr_event_types = [status.value for status in DeliveryStatus]

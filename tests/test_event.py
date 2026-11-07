@@ -1,4 +1,4 @@
-"""Tests for the mailroom parcel event entity."""
+"""Tests for the doorstep parcel event entity."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from . import BASE_URL, ENTRY_ID, PARCELS, mock_api, parcel_json
 
-ENTITY_ID = "event.mailroom_parcel_update"
+ENTITY_ID = "event.doorstep_parcel_update"
 
 
 @pytest.fixture
@@ -224,7 +224,7 @@ async def test_an_outage_does_not_repeat_or_lose_events(
     ]
 
 
-STORAGE_KEY = f"mailroom.{ENTRY_ID}"
+STORAGE_KEY = f"doorstep.{ENTRY_ID}"
 AT_SETUP = {"JD2": "on_its_way", "TQ1": "out_for_delivery", "3S3": "delivered"}
 
 

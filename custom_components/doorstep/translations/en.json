@@ -2,34 +2,34 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to mailroom",
-        "description": "Enter the address of the mailroom dashboard, including any base path. For example: {example_url}",
+        "title": "Connect to doorstep",
+        "description": "Enter the address of the doorstep dashboard, including any base path. For example: {example_url}",
         "data": {
           "url": "URL",
           "username": "Username",
           "password": "Password"
         },
         "data_description": {
-          "username": "Only needed when mailroom sits behind a reverse proxy that asks for HTTP basic auth.",
+          "username": "Only needed when doorstep sits behind a reverse proxy that asks for HTTP basic auth.",
           "password": "The password that goes with the username."
         }
       },
       "reconfigure": {
-        "title": "Reconfigure mailroom",
-        "description": "Enter the new address of the mailroom dashboard, including any base path. For example: {example_url}",
+        "title": "Reconfigure doorstep",
+        "description": "Enter the new address of the doorstep dashboard, including any base path. For example: {example_url}",
         "data": {
           "url": "URL",
           "username": "Username",
           "password": "Password"
         },
         "data_description": {
-          "username": "Only needed when mailroom sits behind a reverse proxy that asks for HTTP basic auth.",
+          "username": "Only needed when doorstep sits behind a reverse proxy that asks for HTTP basic auth.",
           "password": "The password that goes with the username."
         }
       },
       "reauth_confirm": {
-        "title": "Sign in to mailroom again",
-        "description": "The credentials for {url} were refused. Enter ones the reverse proxy in front of mailroom accepts.",
+        "title": "Sign in to doorstep again",
+        "description": "The credentials for {url} were refused. Enter ones the reverse proxy in front of doorstep accepts.",
         "data": {
           "username": "Username",
           "password": "Password"
@@ -40,12 +40,12 @@
       "invalid_url": "Enter an http:// or https:// URL without credentials or a query string.",
       "username_required": "A password needs a username to go with it.",
       "invalid_auth": "The username and password were refused.",
-      "cannot_connect": "Unable to connect to mailroom at that address.",
-      "invalid_response": "Something answered at that address, but it does not look like mailroom."
+      "cannot_connect": "Unable to connect to doorstep at that address.",
+      "invalid_response": "Something answered at that address, but it does not look like doorstep."
     },
     "abort": {
-      "already_configured": "This mailroom instance is already configured.",
-      "reconfigure_successful": "The mailroom address has been updated.",
+      "already_configured": "This doorstep instance is already configured.",
+      "reconfigure_successful": "The doorstep address has been updated.",
       "reauth_successful": "The credentials have been updated."
     }
   },
@@ -104,11 +104,11 @@
   "services": {
     "add_parcel": {
       "name": "Add parcel",
-      "description": "Files a new parcel in mailroom, on its way. Fails if mailroom already has a parcel with that tracking number.",
+      "description": "Files a new parcel in doorstep, on its way. Fails if doorstep already has a parcel with that tracking number.",
       "fields": {
         "config_entry_id": {
-          "name": "Mailroom instance",
-          "description": "The mailroom to use. Only needed when more than one is set up."
+          "name": "Doorstep instance",
+          "description": "The doorstep to use. Only needed when more than one is set up."
         },
         "tracking_number": {
           "name": "Tracking number",
@@ -116,7 +116,7 @@
         },
         "carrier": {
           "name": "Carrier",
-          "description": "The carrier, or the id mailroom knows it by if it is not listed. Without one mailroom cannot poll the parcel."
+          "description": "The carrier, or the id doorstep knows it by if it is not listed. Without one doorstep cannot poll the parcel."
         },
         "description": {
           "name": "Description",
@@ -130,11 +130,11 @@
     },
     "refresh_parcel": {
       "name": "Refresh parcel",
-      "description": "Has mailroom ask the carrier about a parcel now rather than at its next polling round. Returns mailroom's outcome and the parcel's record.",
+      "description": "Has doorstep ask the carrier about a parcel now rather than at its next polling round. Returns doorstep's outcome and the parcel's record.",
       "fields": {
         "config_entry_id": {
-          "name": "Mailroom instance",
-          "description": "The mailroom to use. Only needed when more than one is set up."
+          "name": "Doorstep instance",
+          "description": "The doorstep to use. Only needed when more than one is set up."
         },
         "tracking_number": {
           "name": "Tracking number",
@@ -144,11 +144,11 @@
     },
     "remove_parcel": {
       "name": "Remove parcel",
-      "description": "Deletes a parcel's record from mailroom, including its history.",
+      "description": "Deletes a parcel's record from doorstep, including its history.",
       "fields": {
         "config_entry_id": {
-          "name": "Mailroom instance",
-          "description": "The mailroom to use. Only needed when more than one is set up."
+          "name": "Doorstep instance",
+          "description": "The doorstep to use. Only needed when more than one is set up."
         },
         "tracking_number": {
           "name": "Tracking number",

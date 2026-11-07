@@ -1,4 +1,4 @@
-"""Config flow for the mailroom integration."""
+"""Config flow for the doorstep integration."""
 
 from __future__ import annotations
 
@@ -21,10 +21,10 @@ from homeassistant.helpers.selector import (
 from yarl import URL
 
 from .api import (
-    MailroomAuthError,
-    MailroomClient,
-    MailroomConnectionError,
-    MailroomResponseError,
+    DoorstepAuthError,
+    DoorstepClient,
+    DoorstepConnectionError,
+    DoorstepResponseError,
 )
 from .const import DOMAIN
 
@@ -45,7 +45,7 @@ CREDENTIALS_SCHEMA = vol.Schema(
 
 
 def normalise_url(raw: str) -> str:
-    """Return the canonical form of a mailroom base URL.
+    """Return the canonical form of a doorstep base URL.
 
     Raises ValueError for anything that is not a plain http(s) URL.
     """
@@ -74,15 +74,15 @@ def credentials(user_input: Mapping[str, Any]) -> dict[str, str]:
     return {CONF_USERNAME: username, CONF_PASSWORD: password}
 
 
-class MailroomConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for mailroom."""
+class DoorstepConfigFlow(ConfigFlow, domain=DOMAIN):
+    """Handle a config flow for doorstep."""
 
     VERSION = 1
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Ask for the address of the mailroom dashboard."""
+        """Ask for the address of the doorstep dashboard."""
         return await self._async_step_url("user", user_input)
 
     async def async_step_reconfigure(
@@ -100,7 +100,7 @@ class MailroomConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Ask for credentials the proxy in front of mailroom accepts."""
+        """Ask for credentials the proxy in front of doorstep accepts."""
         entry = self._get_reauth_entry()
         errors: dict[str, str] = {}
 
@@ -146,7 +146,7 @@ class MailroomConfigFlow(ConfigFlow, domain=DOMAIN):
                         self._get_reconfigure_entry(), data=data
                     )
                 else:
-                    return self.async_create_entry(title="Mailroom", data=data)
+                    return self.async_create_entry(title="Doorstep", data=data)
         elif reconfiguring:
             user_input = dict(self._get_reconfigure_entry().data)
 
@@ -158,8 +158,8 @@ class MailroomConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
     async def _async_check(self, data: Mapping[str, str]) -> str | None:
-        """Try to reach mailroom, returning the error to show if that fails."""
-        client = MailroomClient(
+        """Try to reach doorstep, returning the error to show if that fails."""
+        client = DoorstepClient(
             async_get_clientsession(self.hass),
             data[CONF_URL],
             data.get(CONF_USERNAME),
@@ -167,10 +167,10 @@ class MailroomConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         try:
             await client.stats()
-        except MailroomAuthError:
+        except DoorstepAuthError:
             return "invalid_auth"
-        except MailroomConnectionError:
+        except DoorstepConnectionError:
             return "cannot_connect"
-        except MailroomResponseError:
+        except DoorstepResponseError:
             return "invalid_response"
         return None
