@@ -57,7 +57,7 @@ async def test_the_card_is_listed_once_and_follows_the_version(
     await async_register_card(hass)
 
     assert resources.async_items() == [
-        {"id": stale["id"], "type": "module", "url": f"{CARD_URL}?v=0.1.0"}
+        {"id": stale["id"], "type": "module", "url": f"{CARD_URL}?v=0.2.0"}
     ]
 
 
