@@ -3,7 +3,7 @@ add_parcel:
     config_entry_id:
       selector:
         config_entry:
-          integration: mailroom
+          integration: doorstep
     tracking_number:
       required: true
       example: "JD014600006281234567"
@@ -12,7 +12,7 @@ add_parcel:
     carrier:
       example: dhl
       selector:
-        # The carriers mailroom's own add-a-parcel form offers. Any other
+        # The carriers doorstep's own add-a-parcel form offers. Any other
         # id is passed on as typed.
         select:
           custom_value: true
@@ -68,7 +68,7 @@ refresh_parcel:
     config_entry_id:
       selector:
         config_entry:
-          integration: mailroom
+          integration: doorstep
     tracking_number:
       required: true
       example: "JD014600006281234567"
@@ -80,7 +80,7 @@ remove_parcel:
     config_entry_id:
       selector:
         config_entry:
-          integration: mailroom
+          integration: doorstep
     tracking_number:
       required: true
       example: "JD014600006281234567"

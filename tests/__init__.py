@@ -1,4 +1,4 @@
-"""Tests for the mailroom integration."""
+"""Tests for the doorstep integration."""
 
 from __future__ import annotations
 
@@ -6,8 +6,8 @@ from typing import Any
 
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-BASE_URL = "http://mailroom.test:8080"
-ENTRY_ID = "mailroom_test"
+BASE_URL = "http://doorstep.test:8080"
+ENTRY_ID = "doorstep_test"
 
 
 def parcel_json(tracking_number: str, status: str, **fields: Any) -> dict[str, Any]:
@@ -44,7 +44,7 @@ def stats_json(**fields: int) -> dict[str, Any]:
     }
 
 
-# Modelled on what a mailroom instance holding three parcels answers.
+# Modelled on what a doorstep instance holding three parcels answers.
 PARCELS = {
     "current": [
         parcel_json(
@@ -84,7 +84,7 @@ def mock_api(
     stats: dict[str, Any] = STATS,
     base_url: str = BASE_URL,
 ) -> None:
-    """Make the mocked mailroom answer with these documents from now on."""
+    """Make the mocked doorstep answer with these documents from now on."""
     aioclient_mock.clear_requests()
     aioclient_mock.get(f"{base_url}/api/parcels", json=parcels)
     aioclient_mock.get(f"{base_url}/api/stats", json=stats)

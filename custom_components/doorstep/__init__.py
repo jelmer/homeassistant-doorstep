@@ -1,4 +1,4 @@
-"""The mailroom integration."""
+"""The doorstep integration."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
 
-from .api import MailroomClient
+from .api import DoorstepClient
 from .card import async_register_card, async_serve_card, async_unregister_card
 from .const import DOMAIN
-from .coordinator import MailroomConfigEntry, MailroomCoordinator
+from .coordinator import DoorstepConfigEntry, DoorstepCoordinator
 from .event import status_store
 from .services import async_setup_services
 
@@ -21,21 +21,21 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the mailroom actions and dashboard card."""
+    """Set up the doorstep actions and dashboard card."""
     async_setup_services(hass)
     await async_serve_card(hass)
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: MailroomConfigEntry) -> bool:
-    """Set up mailroom from a config entry."""
-    client = MailroomClient(
+async def async_setup_entry(hass: HomeAssistant, entry: DoorstepConfigEntry) -> bool:
+    """Set up doorstep from a config entry."""
+    client = DoorstepClient(
         async_get_clientsession(hass),
         entry.data[CONF_URL],
         entry.data.get(CONF_USERNAME),
         entry.data.get(CONF_PASSWORD),
     )
-    coordinator = MailroomCoordinator(hass, entry, client)
+    coordinator = DoorstepCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
@@ -45,12 +45,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: MailroomConfigEntry) -> 
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: MailroomConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: DoorstepConfigEntry) -> bool:
     """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_remove_entry(hass: HomeAssistant, entry: MailroomConfigEntry) -> None:
+async def async_remove_entry(hass: HomeAssistant, entry: DoorstepConfigEntry) -> None:
     """Forget what was stored for a removed entry."""
     await status_store(hass, entry).async_remove()
     others = [

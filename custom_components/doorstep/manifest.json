@@ -1,14 +1,14 @@
 {
-  "domain": "mailroom",
-  "name": "Mailroom",
+  "domain": "doorstep",
+  "name": "Doorstep",
   "after_dependencies": ["lovelace"],
   "codeowners": ["@jelmer"],
   "config_flow": true,
   "dependencies": ["http"],
-  "documentation": "https://github.com/jelmer/homeassistant-mailroom",
+  "documentation": "https://github.com/jelmer/homeassistant-doorstep",
   "integration_type": "service",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/jelmer/homeassistant-mailroom/issues",
+  "issue_tracker": "https://github.com/jelmer/homeassistant-doorstep/issues",
   "requirements": [],
   "version": "0.1.0"
 }

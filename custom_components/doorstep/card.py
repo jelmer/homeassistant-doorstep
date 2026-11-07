@@ -12,7 +12,7 @@ from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 
-CARD_FILENAME = "mailroom-parcels-card.js"
+CARD_FILENAME = "doorstep-parcels-card.js"
 CARD_URL = f"/{DOMAIN}/{CARD_FILENAME}"
 
 

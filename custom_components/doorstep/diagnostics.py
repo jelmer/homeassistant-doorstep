@@ -1,4 +1,4 @@
-"""Diagnostics support for mailroom."""
+"""Diagnostics support for doorstep."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
-from .coordinator import MailroomConfigEntry
+from .coordinator import DoorstepConfigEntry
 
 # Enough to tell whose parcels these are, and of no use in a bug report.
 TO_REDACT = {
@@ -22,7 +22,7 @@ TO_REDACT = {
 
 
 async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: MailroomConfigEntry
+    hass: HomeAssistant, entry: DoorstepConfigEntry
 ) -> dict[str, Any]:
     """Return what the last poll fetched, without the identifying parts."""
     coordinator = entry.runtime_data

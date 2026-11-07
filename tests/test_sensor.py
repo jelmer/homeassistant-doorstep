@@ -1,4 +1,4 @@
-"""Tests for the mailroom sensors."""
+"""Tests for the doorstep sensors."""
 
 from __future__ import annotations
 
@@ -59,14 +59,14 @@ def the_day_tq1_is_due(freezer: FrozenDateTimeFactory) -> None:
 @pytest.mark.parametrize(
     ("entity_id", "count", "parcels"),
     [
-        ("sensor.mailroom_in_transit", "2", [JD2, TQ1]),
-        ("sensor.mailroom_out_for_delivery", "1", [TQ1]),
-        ("sensor.mailroom_arriving_today", "1", [TQ1]),
-        ("sensor.mailroom_overdue", "1", [JD2]),
-        ("sensor.mailroom_awaiting_collection", "0", []),
-        ("sensor.mailroom_problem", "0", []),
-        ("sensor.mailroom_status_unknown", "0", []),
-        ("sensor.mailroom_recently_delivered", "1", [S3]),
+        ("sensor.doorstep_in_transit", "2", [JD2, TQ1]),
+        ("sensor.doorstep_out_for_delivery", "1", [TQ1]),
+        ("sensor.doorstep_arriving_today", "1", [TQ1]),
+        ("sensor.doorstep_overdue", "1", [JD2]),
+        ("sensor.doorstep_awaiting_collection", "0", []),
+        ("sensor.doorstep_problem", "0", []),
+        ("sensor.doorstep_status_unknown", "0", []),
+        ("sensor.doorstep_recently_delivered", "1", [S3]),
     ],
 )
 async def test_parcel_list_sensors(
@@ -87,8 +87,8 @@ async def test_parcel_list_sensors(
 @pytest.mark.parametrize(
     ("entity_id", "count"),
     [
-        ("sensor.mailroom_delivered", "37"),
-        ("sensor.mailroom_total_parcels", "40"),
+        ("sensor.doorstep_delivered", "37"),
+        ("sensor.doorstep_total_parcels", "40"),
     ],
 )
 async def test_stats_sensors(
@@ -123,7 +123,7 @@ async def test_arriving_today_follows_the_configured_time_zone(
 
     await tick()
 
-    state = hass.states.get("sensor.mailroom_arriving_today")
+    state = hass.states.get("sensor.doorstep_arriving_today")
     assert state is not None
     assert state.state == "1"
     assert [p["tracking_number"] for p in state.attributes["parcels"]] == ["3S3"]
@@ -145,7 +145,7 @@ async def test_problem_counts_parcels_the_carrier_is_stuck_on(
 
     await tick()
 
-    state = hass.states.get("sensor.mailroom_problem")
+    state = hass.states.get("sensor.doorstep_problem")
     assert state is not None
     assert state.state == "1"
     assert [p["tracking_number"] for p in state.attributes["parcels"]] == ["JD2"]
@@ -157,7 +157,7 @@ async def test_a_parcel_of_unknown_status_only_counts_as_that(
     tick: Callable[[], Awaitable[None]],
     config_entry: MockConfigEntry,
 ) -> None:
-    # What mailroom makes of a parcel that went quiet: still current, and
+    # What doorstep makes of a parcel that went quiet: still current, and
     # still overdue against the date it was once promised for.
     stale = parcel_json("OLD7", "Unknown", expected_arrival="2026-10-04", overdue=True)
     mock_api(aioclient_mock, {"current": [stale], "previous": []})
@@ -173,7 +173,7 @@ async def test_a_parcel_of_unknown_status_only_counts_as_that(
         "problem",
         "status_unknown",
     ):
-        state = hass.states.get(f"sensor.mailroom_{key}")
+        state = hass.states.get(f"sensor.doorstep_{key}")
         assert state is not None
         counts[key] = state.state
     assert counts == {
@@ -202,7 +202,7 @@ async def test_recently_delivered_leaves_out_returned_parcels(
 
     await tick()
 
-    state = hass.states.get("sensor.mailroom_recently_delivered")
+    state = hass.states.get("sensor.doorstep_recently_delivered")
     assert state is not None
     assert state.state == "1"
     assert state.attributes["parcels"] == [S3]
@@ -233,7 +233,7 @@ async def test_awaiting_collection_lists_where_and_until_when(
 
     await tick()
 
-    state = hass.states.get("sensor.mailroom_awaiting_collection")
+    state = hass.states.get("sensor.doorstep_awaiting_collection")
     assert state is not None
     assert state.state == "1"
     assert [
@@ -242,7 +242,7 @@ async def test_awaiting_collection_lists_where_and_until_when(
     ] == [("3SXYZ", pickup)]
 
 
-async def test_sensors_follow_mailroom(
+async def test_sensors_follow_doorstep(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     tick: Callable[[], Awaitable[None]],
@@ -252,13 +252,13 @@ async def test_sensors_follow_mailroom(
 
     await tick()
 
-    state = hass.states.get("sensor.mailroom_in_transit")
+    state = hass.states.get("sensor.doorstep_in_transit")
     assert state is not None
     assert state.state == "0"
     assert state.attributes["parcels"] == []
 
 
-async def test_sensors_are_unavailable_while_mailroom_is_down(
+async def test_sensors_are_unavailable_while_doorstep_is_down(
     hass: HomeAssistant,
     aioclient_mock: AiohttpClientMocker,
     tick: Callable[[], Awaitable[None]],
@@ -270,13 +270,13 @@ async def test_sensors_are_unavailable_while_mailroom_is_down(
 
     await tick()
 
-    state = hass.states.get("sensor.mailroom_in_transit")
+    state = hass.states.get("sensor.doorstep_in_transit")
     assert state is not None
     assert state.state == STATE_UNAVAILABLE
 
     mock_api(aioclient_mock)
     await tick()
 
-    state = hass.states.get("sensor.mailroom_in_transit")
+    state = hass.states.get("sensor.doorstep_in_transit")
     assert state is not None
     assert state.state == "2"

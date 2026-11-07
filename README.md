@@ -1,11 +1,11 @@
-# Mailroom for Home Assistant
+# Doorstep for Home Assistant
 
 A [Home Assistant](https://www.home-assistant.io/) custom integration for
-[mailroom](https://github.com/jelmer/mailroom), the parcel dashboard and
+[doorstep](https://github.com/jelmer/doorstep), the parcel dashboard and
 carrier-tracking poller built on top of
 [mailsift](https://github.com/jelmer/mailsift).
 
-It reads mailroom's JSON API every five minutes and exposes what the
+It reads doorstep's JSON API every five minutes and exposes what the
 dashboard shows as sensors, plus an event entity that fires when a parcel
 changes status. Actions add, refresh and remove parcels.
 
@@ -19,10 +19,10 @@ changes status. Actions add, refresh and remove parcels.
 | Overdue | Parcels in transit whose expected arrival date has passed |
 | Awaiting collection | Parcels waiting at a locker or parcel shop |
 | Problem | Parcels in transit that the carrier reports a problem with |
-| Status unknown | Parcels mailroom has no trustworthy status for |
-| Recently delivered | Delivered parcels mailroom still lists, 90 days by default |
-| Delivered | Delivered parcels, over every record mailroom has |
-| Total parcels | Every record mailroom has |
+| Status unknown | Parcels doorstep has no trustworthy status for |
+| Recently delivered | Delivered parcels doorstep still lists, 90 days by default |
+| Delivered | Delivered parcels, over every record doorstep has |
+| Total parcels | Every record doorstep has |
 | Parcel update | Event entity; fires when a parcel appears or changes status |
 
 The first eight sensors list the parcels they count in a `parcels`
@@ -32,20 +32,20 @@ attribute is kept out of the recorder.
 
 A parcel waiting to be collected also has a `pickup` with its `location`,
 collection `code`, `available_from` and `available_through`. This needs a
-mailroom that reports pickups in `/api/parcels`; with an older one
+doorstep that reports pickups in `/api/parcels`; with an older one
 "Awaiting collection" stays at zero.
 
-mailroom shows a parcel as `Unknown` once it has gone a long time without
+doorstep shows a parcel as `Unknown` once it has gone a long time without
 news, and such a parcel never leaves its "in transit" list. Here those are
 counted under "Status unknown" only, so the other sensors can get back to
 zero.
 
-The statuses are mailroom's own: `scheduled`, `on_its_way`,
+The statuses are doorstep's own: `scheduled`, `on_its_way`,
 `out_for_delivery`, `delivered`, `returned`, `problem` and `unknown`.
 
 ### Parcel updates
 
-The event type of `event.mailroom_parcel_update` is the status the parcel
+The event type of `event.doorstep_parcel_update` is the status the parcel
 moved to. The parcel's details are attributes of the event, along with
 `previous_status`, which is empty for a parcel that was not there before.
 
@@ -56,9 +56,9 @@ it has started, which can be up to five minutes later.
 
 For notifications on a phone running the Home Assistant app there is a
 blueprint: pick the statuses to hear about and the device to notify.
-[Import it](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjelmer%2Fhomeassistant-mailroom%2Fblob%2Fmaster%2Fblueprints%2Fautomation%2Fmailroom%2Fparcel_notification.yaml),
+[Import it](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fjelmer%2Fhomeassistant-doorstep%2Fblob%2Fmaster%2Fblueprints%2Fautomation%2Fdoorstep%2Fparcel_notification.yaml),
 or use the URL of
-`blueprints/automation/mailroom/parcel_notification.yaml` in this
+`blueprints/automation/doorstep/parcel_notification.yaml` in this
 repository under Settings > Automations & scenes > Blueprints.
 
 For anything else, trigger on the entity yourself:
@@ -67,11 +67,11 @@ For anything else, trigger on the entity yourself:
       - alias: Announce parcels that are out for delivery
         triggers:
           - trigger: state
-            entity_id: event.mailroom_parcel_update
+            entity_id: event.doorstep_parcel_update
             not_from: unavailable
         conditions:
           - condition: state
-            entity_id: event.mailroom_parcel_update
+            entity_id: event.doorstep_parcel_update
             attribute: event_type
             state: out_for_delivery
         actions:
@@ -88,9 +88,9 @@ For anything else, trigger on the entity yourself:
 The integration comes with a card that lists the parcels of any of the
 sensors above:
 
-    type: custom:mailroom-parcels-card
-    entity: sensor.mailroom_in_transit
-    delivered_entity: sensor.mailroom_recently_delivered
+    type: custom:doorstep-parcels-card
+    entity: sensor.doorstep_in_transit
+    delivered_entity: sensor.doorstep_recently_delivered
     title: Parcels
     max_items: 10
 
@@ -104,36 +104,36 @@ up, and shows up in the card picker after a browser reload. If you keep
 your resources in YAML, add it yourself:
 
     resources:
-      - url: /mailroom/mailroom-parcels-card.js
+      - url: /doorstep/doorstep-parcels-card.js
         type: module
 
 ## Actions
 
 | Action | What |
 | --- | --- |
-| `mailroom.add_parcel` | File a new parcel, on its way |
-| `mailroom.refresh_parcel` | Have mailroom poll the carrier for a parcel now |
-| `mailroom.remove_parcel` | Delete a parcel's record, history included |
+| `doorstep.add_parcel` | File a new parcel, on its way |
+| `doorstep.refresh_parcel` | Have doorstep poll the carrier for a parcel now |
+| `doorstep.remove_parcel` | Delete a parcel's record, history included |
 
 All three take a `tracking_number`, and a `config_entry_id` that is only
-needed when more than one mailroom is set up.
+needed when more than one doorstep is set up.
 
 `add_parcel` also takes an optional `carrier`, `description` and
-`postcode`. The carrier is the id mailroom knows it by, such as `dhl`,
+`postcode`. The carrier is the id doorstep knows it by, such as `dhl`,
 `dpd`, `postnl`, `royal-mail` or `ups`; a parcel without one is not polled.
-The action's form offers the carriers mailroom's own form does, and takes
+The action's form offers the carriers doorstep's own form does, and takes
 any other id as typed.
 DPD and PostNL need the postcode to look a parcel up. Adding a tracking
-number mailroom already has is refused rather than replacing the record;
-that needs a mailroom that honours `If-None-Match` to be watertight
+number doorstep already has is refused rather than replacing the record;
+that needs a doorstep that honours `If-None-Match` to be watertight
 against mailsift filing the same parcel at the same moment.
 
-`refresh_parcel` returns mailroom's `outcome` (`updated`, `unchanged`,
+`refresh_parcel` returns doorstep's `outcome` (`updated`, `unchanged`,
 `no_record`, `no_carrier`, `carrier_not_configured` or `postcode_required`)
 and the parcel's record as it is afterwards:
 
     actions:
-      - action: mailroom.refresh_parcel
+      - action: doorstep.refresh_parcel
         data:
           tracking_number: JD014600006281234567
         response_variable: refreshed
@@ -144,26 +144,26 @@ and the parcel's record as it is afterwards:
 
 1. Add this repository as a custom repository in HACS, with the category
    "Integration"
-2. Install "Mailroom"
+2. Install "Doorstep"
 3. Restart Home Assistant
 
 ### Manual
 
-Copy the `custom_components/mailroom` directory into the
+Copy the `custom_components/doorstep` directory into the
 `custom_components` directory of your Home Assistant configuration and
 restart Home Assistant.
 
 ## Configuration
 
 Go to Settings > Devices & Services > Add Integration, search for
-"Mailroom" and enter the URL of the dashboard, e.g. `http://localhost:8080`.
-Include the base path if mailroom is mounted under one. If mailroom moves,
+"Doorstep" and enter the URL of the dashboard, e.g. `http://localhost:8080`.
+Include the base path if doorstep is mounted under one. If doorstep moves,
 "Reconfigure" on the integration's entry changes the URL in place.
 
-Home Assistant has to be able to reach mailroom over HTTP, so a mailroom
+Home Assistant has to be able to reach doorstep over HTTP, so a doorstep
 that only listens on a unix socket needs a reverse proxy in front of it.
 
-mailroom has no authentication of its own. If the proxy asks for HTTP
+doorstep has no authentication of its own. If the proxy asks for HTTP
 basic auth, enter the username and password along with the URL; they are
 left empty otherwise. When they stop being accepted Home Assistant asks
 for new ones.

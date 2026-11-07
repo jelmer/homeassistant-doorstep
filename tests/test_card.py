@@ -12,13 +12,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from pytest_homeassistant_custom_component.typing import ClientSessionGenerator
 
-from custom_components.mailroom.card import (
+from custom_components.doorstep.card import (
     async_register_card,
     async_unregister_card,
 )
-from custom_components.mailroom.const import DOMAIN
+from custom_components.doorstep.const import DOMAIN
 
-CARD_URL = "/mailroom/mailroom-parcels-card.js"
+CARD_URL = "/doorstep/doorstep-parcels-card.js"
 
 
 async def test_the_card_is_served(
@@ -31,7 +31,7 @@ async def test_the_card_is_served(
 
     assert response.status == HTTPStatus.OK
     assert response.content_type == "text/javascript"
-    assert 'customElements.define("mailroom-parcels-card"' in await response.text()
+    assert 'customElements.define("doorstep-parcels-card"' in await response.text()
 
 
 def _dashboard_resources(hass: HomeAssistant) -> ResourceStorageCollection:

@@ -1,4 +1,4 @@
-"""Actions for the mailroom integration."""
+"""Actions for the doorstep integration."""
 
 from __future__ import annotations
 
@@ -19,13 +19,13 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
 from .api import (
-    MailroomError,
-    MailroomNotFoundError,
-    MailroomParcelExistsError,
+    DoorstepError,
+    DoorstepNotFoundError,
+    DoorstepParcelExistsError,
     is_valid_tracking_number,
 )
 from .const import DOMAIN
-from .coordinator import MailroomConfigEntry, MailroomCoordinator
+from .coordinator import DoorstepConfigEntry, DoorstepCoordinator
 
 ATTR_TRACKING_NUMBER = "tracking_number"
 ATTR_CARRIER = "carrier"
@@ -61,9 +61,9 @@ ADD_PARCEL_SCHEMA = vol.Schema(
 )
 
 
-def _coordinator(call: ServiceCall) -> MailroomCoordinator:
-    """Find the mailroom instance an action is meant for."""
-    entries: list[MailroomConfigEntry] = call.hass.config_entries.async_loaded_entries(
+def _coordinator(call: ServiceCall) -> DoorstepCoordinator:
+    """Find the doorstep instance an action is meant for."""
+    entries: list[DoorstepConfigEntry] = call.hass.config_entries.async_loaded_entries(
         DOMAIN
     )
     entry_id = call.data.get(ATTR_CONFIG_ENTRY_ID)
@@ -71,29 +71,29 @@ def _coordinator(call: ServiceCall) -> MailroomCoordinator:
         for entry in entries:
             if entry.entry_id == entry_id:
                 return entry.runtime_data
-        raise ServiceValidationError(f"No loaded mailroom entry with id {entry_id}")
+        raise ServiceValidationError(f"No loaded doorstep entry with id {entry_id}")
     if len(entries) != 1:
         raise ServiceValidationError(
-            f"There are {len(entries)} loaded mailroom entries; "
+            f"There are {len(entries)} loaded doorstep entries; "
             f"say which one to use with {ATTR_CONFIG_ENTRY_ID}"
         )
     return entries[0].runtime_data
 
 
 @contextmanager
-def _mailroom_errors() -> Generator[None]:
+def _doorstep_errors() -> Generator[None]:
     """Report a failed request in the terms an action is expected to."""
     try:
         yield
-    except (MailroomNotFoundError, MailroomParcelExistsError) as err:
+    except (DoorstepNotFoundError, DoorstepParcelExistsError) as err:
         raise ServiceValidationError(str(err)) from err
-    except MailroomError as err:
+    except DoorstepError as err:
         raise HomeAssistantError(str(err)) from err
 
 
 async def _add_parcel(call: ServiceCall) -> None:
     coordinator = _coordinator(call)
-    with _mailroom_errors():
+    with _doorstep_errors():
         await coordinator.client.add_parcel(
             call.data[ATTR_TRACKING_NUMBER],
             carrier=call.data.get(ATTR_CARRIER),
@@ -105,7 +105,7 @@ async def _add_parcel(call: ServiceCall) -> None:
 
 async def _refresh_parcel(call: ServiceCall) -> ServiceResponse:
     coordinator = _coordinator(call)
-    with _mailroom_errors():
+    with _doorstep_errors():
         result = await coordinator.client.refresh_parcel(
             call.data[ATTR_TRACKING_NUMBER]
         )
@@ -115,14 +115,14 @@ async def _refresh_parcel(call: ServiceCall) -> ServiceResponse:
 
 async def _remove_parcel(call: ServiceCall) -> None:
     coordinator = _coordinator(call)
-    with _mailroom_errors():
+    with _doorstep_errors():
         await coordinator.client.remove_parcel(call.data[ATTR_TRACKING_NUMBER])
     await coordinator.async_request_refresh()
 
 
 @callback
 def async_setup_services(hass: HomeAssistant) -> None:
-    """Register the mailroom actions."""
+    """Register the doorstep actions."""
     hass.services.async_register(
         DOMAIN, SERVICE_ADD_PARCEL, _add_parcel, schema=ADD_PARCEL_SCHEMA
     )

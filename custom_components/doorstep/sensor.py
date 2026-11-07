@@ -1,4 +1,4 @@
-"""Sensor platform for mailroom."""
+"""Sensor platform for doorstep."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from .api import DeliveryStatus, Parcel, Parcels, Stats
-from .coordinator import MailroomConfigEntry, MailroomCoordinator
-from .entity import MailroomEntity, parcel_attributes
+from .coordinator import DoorstepConfigEntry, DoorstepCoordinator
+from .entity import DoorstepEntity, parcel_attributes
 
 UNIT_PARCELS = "parcels"
 
@@ -31,7 +31,7 @@ class ParcelListSensorDescription(SensorEntityDescription):
 
 @dataclass(frozen=True, kw_only=True)
 class StatsSensorDescription(SensorEntityDescription):
-    """A sensor reporting one of mailroom's aggregate figures."""
+    """A sensor reporting one of doorstep's aggregate figures."""
 
     value_fn: Callable[[Stats], int]
 
@@ -43,9 +43,9 @@ def _with_status(status: DeliveryStatus) -> Callable[[Parcels], list[Parcel]]:
 
 
 def _in_transit(parcels: Parcels) -> list[Parcel]:
-    """Parcels on their way whose status mailroom still vouches for.
+    """Parcels on their way whose status doorstep still vouches for.
 
-    mailroom reports a parcel as unknown once it has gone without news for
+    doorstep reports a parcel as unknown once it has gone without news for
     long enough. Such a parcel never leaves `current`, so counting it would
     keep these sensors above zero for good.
     """
@@ -120,10 +120,10 @@ STATS_SENSORS = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: MailroomConfigEntry,
+    entry: DoorstepConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up mailroom sensor entities."""
+    """Set up doorstep sensor entities."""
     coordinator = entry.runtime_data
     entities: list[SensorEntity] = [
         ParcelListSensor(coordinator, entry, description)
@@ -135,7 +135,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class ParcelListSensor(MailroomEntity, SensorEntity):
+class ParcelListSensor(DoorstepEntity, SensorEntity):
     """The number of parcels matching some condition."""
 
     entity_description: ParcelListSensorDescription
@@ -146,8 +146,8 @@ class ParcelListSensor(MailroomEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: MailroomCoordinator,
-        entry: MailroomConfigEntry,
+        coordinator: DoorstepCoordinator,
+        entry: DoorstepConfigEntry,
         description: ParcelListSensorDescription,
     ) -> None:
         super().__init__(coordinator, entry, description.key)
@@ -168,8 +168,8 @@ class ParcelListSensor(MailroomEntity, SensorEntity):
         return {"parcels": [parcel_attributes(parcel) for parcel in self._parcels]}
 
 
-class StatsSensor(MailroomEntity, SensorEntity):
-    """A count over every record mailroom has on disk."""
+class StatsSensor(DoorstepEntity, SensorEntity):
+    """A count over every record doorstep has on disk."""
 
     entity_description: StatsSensorDescription
     _attr_native_unit_of_measurement = UNIT_PARCELS
@@ -177,8 +177,8 @@ class StatsSensor(MailroomEntity, SensorEntity):
 
     def __init__(
         self,
-        coordinator: MailroomCoordinator,
-        entry: MailroomConfigEntry,
+        coordinator: DoorstepCoordinator,
+        entry: DoorstepConfigEntry,
         description: StatsSensorDescription,
     ) -> None:
         super().__init__(coordinator, entry, description.key)

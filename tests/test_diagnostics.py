@@ -1,4 +1,4 @@
-"""Tests for the mailroom diagnostics."""
+"""Tests for the doorstep diagnostics."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClientMocker
 
-from custom_components.mailroom.diagnostics import async_get_config_entry_diagnostics
+from custom_components.doorstep.diagnostics import async_get_config_entry_diagnostics
 
 from . import mock_api, parcel_json
 

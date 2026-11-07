@@ -13,7 +13,7 @@ from homeassistant.util.yaml import Input, load_yaml_dict
 
 PATH = (
     pathlib.Path(__file__).parent.parent
-    / "blueprints/automation/mailroom/parcel_notification.yaml"
+    / "blueprints/automation/doorstep/parcel_notification.yaml"
 )
 
 
@@ -24,7 +24,7 @@ def test_parcel_notification_is_a_valid_automation_blueprint() -> None:
         schema=AUTOMATION_BLUEPRINT_SCHEMA,
     )
 
-    assert blueprint.name == "Mailroom parcel notification"
+    assert blueprint.name == "Doorstep parcel notification"
     assert set(blueprint.inputs) == {"parcel_event", "statuses", "notify_device"}
 
 
@@ -38,7 +38,7 @@ async def test_parcel_notification_wording(
     document = load_yaml_dict(str(PATH))
     [action] = document["actions"]
     state = State(
-        "event.mailroom_parcel_update",
+        "event.doorstep_parcel_update",
         "2026-10-04T12:00:00.000+00:00",
         {
             "event_type": "out_for_delivery",
