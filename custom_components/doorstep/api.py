@@ -14,6 +14,8 @@ import aiohttp
 from yarl import URL
 
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=30)
+# Enough for http to https followed by a renamed path.
+MAX_REDIRECTS = 5
 
 
 class DoorstepError(Exception):
@@ -233,6 +235,11 @@ def _new_parcel(
     return document
 
 
+@dataclass(frozen=True)
+class _Redirect:
+    location: str
+
+
 class DoorstepClient:
     """Client for a doorstep instance."""
 
@@ -242,29 +249,37 @@ class DoorstepClient:
         url: str,
         username: str | None = None,
         password: str | None = None,
+        on_moved: Callable[[str], None] | None = None,
     ) -> None:
         """Create a client.
 
         doorstep has no authentication of its own. `username` and `password`
         are for a reverse proxy in front of it that asks for HTTP basic auth.
+
+        When doorstep answers with a permanent redirect, the client carries on
+        at the new address and tells `on_moved` about it.
         """
         self._session = session
         self._base = URL(url)
+        self._on_moved = on_moved
         self._headers = (
             {}
             if username is None
             else {"Authorization": aiohttp.encode_basic_auth(username, password or "")}
         )
 
+    @property
+    def url(self) -> str:
+        """The address doorstep is at, after any permanent redirects."""
+        return str(self._base)
+
     async def parcels(self) -> Parcels:
         """Fetch the parcels the dashboard lists."""
-        url = self._base.joinpath("api", "parcels")
-        return await self._fetch("GET", url, _parse_parcels)
+        return await self._fetch("GET", ("api", "parcels"), _parse_parcels)
 
     async def stats(self) -> Stats:
         """Fetch the aggregate statistics."""
-        url = self._base.joinpath("api", "stats")
-        return await self._fetch("GET", url, _parse_stats)
+        return await self._fetch("GET", ("api", "stats"), _parse_stats)
 
     async def add_parcel(
         self,
@@ -279,7 +294,7 @@ class DoorstepClient:
         `carrier` is the id doorstep knows the carrier by, such as `dhl`.
         Raises DoorstepParcelExistsError rather than replace a record.
         """
-        url = self._parcel_url(tracking_number)
+        path = self._parcel_path(tracking_number)
         exists = DoorstepParcelExistsError(
             f"doorstep already has a parcel {tracking_number}"
         )
@@ -287,63 +302,103 @@ class DoorstepClient:
         # doorstep from before it understood If-None-Match treats this one as
         # plain. Looking first keeps that from costing a record.
         # TODO(jelmer): Drop the look once no such doorstep is around.
-        if await self._exists(url):
+        if await self._exists(path):
             raise exists
         document = _new_parcel(
             tracking_number, carrier, description, postcode, datetime.now(UTC)
         )
         try:
             await self._request(
-                "PUT", url, json=document, headers={"If-None-Match": "*"}
+                "PUT", path, json=document, headers={"If-None-Match": "*"}
             )
         except DoorstepPreconditionFailedError as err:
             raise exists from err
 
     async def remove_parcel(self, tracking_number: str) -> None:
         """Delete a parcel's record. Raises DoorstepNotFoundError if absent."""
-        url = self._parcel_url(tracking_number)
+        path = self._parcel_path(tracking_number)
         with _missing_parcel(tracking_number):
-            await self._request("DELETE", url)
+            await self._request("DELETE", path)
 
     async def refresh_parcel(self, tracking_number: str) -> RefreshResult:
         """Have doorstep ask the carrier about a parcel now.
 
         Raises DoorstepNotFoundError if doorstep has no such parcel.
         """
-        url = self._parcel_url(tracking_number) / "refresh"
+        path = (*self._parcel_path(tracking_number), "refresh")
         with _missing_parcel(tracking_number):
-            return await self._fetch("POST", url, _parse_refresh)
+            return await self._fetch("POST", path, _parse_refresh)
 
-    def _parcel_url(self, tracking_number: str) -> URL:
+    def _parcel_path(self, tracking_number: str) -> tuple[str, ...]:
         # Anything else could name a different endpoint, e.g. `..`.
         if not is_valid_tracking_number(tracking_number):
             raise ValueError(f"invalid tracking number {tracking_number!r}")
-        return self._base.joinpath("api", "parcel", tracking_number)
+        return ("api", "parcel", tracking_number)
 
-    async def _exists(self, url: URL) -> bool:
+    async def _exists(self, path: tuple[str, ...]) -> bool:
         try:
-            await self._request("GET", url)
+            await self._request("GET", path)
         except DoorstepNotFoundError:
             return False
         return True
 
-    async def _fetch[T](self, method: str, url: URL, parse: Callable[[Any], T]) -> T:
-        body = await self._request(method, url)
+    async def _fetch[T](
+        self, method: str, path: tuple[str, ...], parse: Callable[[Any], T]
+    ) -> T:
+        body = await self._request(method, path)
         try:
             return parse(body)
         except (KeyError, TypeError, ValueError) as err:
             raise DoorstepResponseError(
-                f"{url} returned an unexpected document: {err!r}"
+                f"{self._base.joinpath(*path)} returned an unexpected document: {err!r}"
             ) from err
+
+    def _move(self, url: URL, path: tuple[str, ...], location: str) -> None:
+        """Rebase onto where a permanent redirect for `url` points."""
+        target = url.join(URL(location))
+        suffix = "/" + "/".join(path)
+        # The credentials would go along, so only follow within the host.
+        if (
+            target.host != url.host
+            or target.scheme not in (url.scheme, "https")
+            or target.query_string
+            or not target.path.endswith(suffix)
+        ):
+            raise DoorstepResponseError(
+                f"{url} moved to {target}, which is not a doorstep at the same "
+                "host; reconfigure the integration with doorstep's new address"
+            )
+        base = target.with_path(target.path.removesuffix(suffix))
+        # Another request in flight may have got there first.
+        if base == self._base:
+            return
+        self._base = base
+        if self._on_moved is not None:
+            self._on_moved(str(base))
 
     async def _request(
         self,
         method: str,
-        url: URL,
+        path: tuple[str, ...],
         json: Any = None,
         headers: dict[str, str] | None = None,
     ) -> Any:
         """Return the decoded body, or None where doorstep sends none."""
+        for _ in range(MAX_REDIRECTS):
+            url = self._base.joinpath(*path)
+            body = await self._request_once(method, url, json, headers)
+            if not isinstance(body, _Redirect):
+                return body
+            self._move(url, path, body.location)
+        raise DoorstepResponseError(f"{url} redirected too many times")
+
+    async def _request_once(
+        self,
+        method: str,
+        url: URL,
+        json: Any,
+        headers: dict[str, str] | None,
+    ) -> Any:
         try:
             async with self._session.request(
                 method,
@@ -351,7 +406,19 @@ class DoorstepClient:
                 json=json,
                 headers={**self._headers, **(headers or {})},
                 timeout=REQUEST_TIMEOUT,
+                # aiohttp turns a redirected POST into a GET.
+                allow_redirects=False,
             ) as response:
+                if response.status in (
+                    HTTPStatus.MOVED_PERMANENTLY,
+                    HTTPStatus.PERMANENT_REDIRECT,
+                ):
+                    try:
+                        return _Redirect(response.headers["Location"])
+                    except KeyError:
+                        raise DoorstepResponseError(
+                            f"{url} redirected without saying where"
+                        ) from None
                 if response.status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
                     raise DoorstepAuthError(
                         f"{url} refused the credentials (HTTP {response.status})"

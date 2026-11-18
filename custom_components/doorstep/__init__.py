@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.const import CONF_PASSWORD, CONF_URL, CONF_USERNAME, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.typing import ConfigType
@@ -14,6 +16,8 @@ from .const import DOMAIN
 from .coordinator import DoorstepConfigEntry, DoorstepCoordinator
 from .event import status_store
 from .services import async_setup_services
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.EVENT, Platform.SENSOR]
 
@@ -29,11 +33,20 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: DoorstepConfigEntry) -> bool:
     """Set up doorstep from a config entry."""
+
+    @callback
+    def moved(url: str) -> None:
+        _LOGGER.warning("doorstep moved from %s to %s", entry.data[CONF_URL], url)
+        hass.config_entries.async_update_entry(
+            entry, data={**entry.data, CONF_URL: url}
+        )
+
     client = DoorstepClient(
         async_get_clientsession(hass),
         entry.data[CONF_URL],
         entry.data.get(CONF_USERNAME),
         entry.data.get(CONF_PASSWORD),
+        on_moved=moved,
     )
     coordinator = DoorstepCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()

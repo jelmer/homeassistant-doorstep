@@ -138,14 +138,17 @@ class DoorstepConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors[CONF_USERNAME] = "username_required"
 
             if not errors:
-                self._async_abort_entries_match({CONF_URL: data[CONF_URL]})
+                entered = data[CONF_URL]
+                self._async_abort_entries_match({CONF_URL: entered})
                 if (error := await self._async_check(data)) is not None:
                     errors["base"] = error
-                elif reconfiguring:
-                    return self.async_update_reload_and_abort(
-                        self._get_reconfigure_entry(), data=data
-                    )
                 else:
+                    if data[CONF_URL] != entered:
+                        self._async_abort_entries_match({CONF_URL: data[CONF_URL]})
+                    if reconfiguring:
+                        return self.async_update_reload_and_abort(
+                            self._get_reconfigure_entry(), data=data
+                        )
                     return self.async_create_entry(title="Doorstep", data=data)
         elif reconfiguring:
             user_input = dict(self._get_reconfigure_entry().data)
@@ -157,8 +160,11 @@ class DoorstepConfigFlow(ConfigFlow, domain=DOMAIN):
             description_placeholders={"example_url": "http://localhost:8080"},
         )
 
-    async def _async_check(self, data: Mapping[str, str]) -> str | None:
-        """Try to reach doorstep, returning the error to show if that fails."""
+    async def _async_check(self, data: dict[str, str]) -> str | None:
+        """Try to reach doorstep, returning the error to show if that fails.
+
+        Updates the URL in `data` if doorstep has moved.
+        """
         client = DoorstepClient(
             async_get_clientsession(self.hass),
             data[CONF_URL],
@@ -173,4 +179,5 @@ class DoorstepConfigFlow(ConfigFlow, domain=DOMAIN):
             return "cannot_connect"
         except DoorstepResponseError:
             return "invalid_response"
+        data[CONF_URL] = client.url
         return None
