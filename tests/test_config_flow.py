@@ -17,7 +17,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 from custom_components.doorstep.config_flow import normalise_url
 from custom_components.doorstep.const import DOMAIN
 
-from . import BASE_URL, mock_api
+from . import BASE_URL, STATS, mock_api
 
 
 @pytest.mark.parametrize(
@@ -114,6 +114,39 @@ async def test_the_same_doorstep_is_not_added_twice(
     hass: HomeAssistant, config_entry: MockConfigEntry
 ) -> None:
     result = await _submit(hass, f"{BASE_URL}/")
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+
+
+async def test_a_moved_doorstep_is_added_at_its_new_address(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    aioclient_mock.get(
+        f"{BASE_URL}/mailroom/api/stats",
+        status=301,
+        headers={"Location": f"{BASE_URL}/doorstep/api/stats"},
+    )
+    aioclient_mock.get(f"{BASE_URL}/doorstep/api/stats", json=STATS)
+
+    result = await _submit(hass, f"{BASE_URL}/mailroom")
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {CONF_URL: f"{BASE_URL}/doorstep"}
+
+
+async def test_the_old_address_of_a_doorstep_is_not_added_twice(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    aioclient_mock: AiohttpClientMocker,
+) -> None:
+    aioclient_mock.get(
+        f"{BASE_URL}/mailroom/api/stats",
+        status=301,
+        headers={"Location": f"{BASE_URL}/api/stats"},
+    )
+
+    result = await _submit(hass, f"{BASE_URL}/mailroom")
 
     assert result["type"] is FlowResultType.ABORT
     assert result["reason"] == "already_configured"

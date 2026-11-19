@@ -12,7 +12,7 @@ from pytest_homeassistant_custom_component.test_util.aiohttp import AiohttpClien
 
 from custom_components.doorstep.const import DOMAIN
 
-from . import BASE_URL
+from . import BASE_URL, ENTRY_ID, mock_api
 
 
 async def test_setup_and_unload(
@@ -33,6 +33,29 @@ async def test_setup_and_unload(
     state = hass.states.get("sensor.doorstep_in_transit")
     assert state is not None
     assert state.state == STATE_UNAVAILABLE
+
+
+async def test_the_entry_follows_doorstep_when_it_moves(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    old = f"{BASE_URL}/mailroom"
+    mock_api(aioclient_mock, base_url=f"{BASE_URL}/doorstep")
+    for endpoint in ("parcels", "stats"):
+        aioclient_mock.get(
+            f"{old}/api/{endpoint}",
+            status=301,
+            headers={"Location": f"{BASE_URL}/doorstep/api/{endpoint}"},
+        )
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Doorstep", data={CONF_URL: old}, entry_id=ENTRY_ID
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.state is ConfigEntryState.LOADED
+    assert entry.data == {CONF_URL: f"{BASE_URL}/doorstep"}
 
 
 async def test_setup_is_retried_while_doorstep_is_unreachable(

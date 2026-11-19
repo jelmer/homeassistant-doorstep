@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from datetime import UTC, date, datetime
 from typing import Any
@@ -27,7 +28,7 @@ from custom_components.doorstep.api import (
     Stats,
 )
 
-from . import BASE_URL, STATS, mock_api, parcel_json
+from . import BASE_URL, PARCELS, STATS, mock_api, parcel_json
 
 
 @pytest.fixture
@@ -344,3 +345,109 @@ async def test_basic_auth_is_sent(guarded_doorstep: test_utils.TestServer) -> No
         )
 
         assert await client.stats() == Stats(total=40, delivered=37)
+
+
+@pytest.fixture
+async def moved_doorstep(
+    socket_enabled: None,
+) -> AsyncGenerator[test_utils.TestServer]:
+    """A server that has moved doorstep from /mailroom to /doorstep."""
+
+    async def moved(request: web.Request) -> web.Response:
+        path = request.path.removeprefix("/mailroom")
+        raise web.HTTPMovedPermanently(f"/doorstep{path}")
+
+    async def refresh(request: web.Request) -> web.Response:
+        return web.json_response(
+            {"outcome": "unchanged", "parcel": {"trackingNumber": "TQ1"}}
+        )
+
+    app = web.Application()
+    app.router.add_route("*", "/mailroom/{tail:.*}", moved)
+
+    async def parcels(request: web.Request) -> web.Response:
+        return web.json_response(PARCELS)
+
+    async def stats(request: web.Request) -> web.Response:
+        return web.json_response(STATS)
+
+    app.router.add_post("/doorstep/api/parcel/TQ1/refresh", refresh)
+    app.router.add_get("/doorstep/api/parcels", parcels)
+    app.router.add_get("/doorstep/api/stats", stats)
+    server = test_utils.TestServer(app)
+    await server.start_server()
+    try:
+        yield server
+    finally:
+        await server.close()
+
+
+async def test_a_permanent_redirect_moves_the_client(
+    moved_doorstep: test_utils.TestServer,
+) -> None:
+    async with aiohttp.ClientSession() as session:
+        client = DoorstepClient(session, str(moved_doorstep.make_url("/mailroom")))
+
+        assert await client.refresh_parcel("TQ1") == RefreshResult(
+            outcome="unchanged", parcel={"trackingNumber": "TQ1"}
+        )
+        assert client.url == str(moved_doorstep.make_url("/doorstep"))
+
+
+async def test_a_redirect_to_another_host_is_not_followed(
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    aioclient_mock.get(
+        f"{BASE_URL}/api/stats",
+        status=301,
+        headers={"Location": "http://elsewhere.test/api/stats"},
+    )
+
+    with pytest.raises(DoorstepResponseError, match="reconfigure"):
+        await client.stats()
+    assert client.url == BASE_URL
+
+
+async def test_a_temporary_redirect_is_an_error(
+    client: DoorstepClient, aioclient_mock: AiohttpClientMocker
+) -> None:
+    aioclient_mock.get(
+        f"{BASE_URL}/api/stats",
+        status=302,
+        headers={"Location": f"{BASE_URL}/login"},
+    )
+
+    with pytest.raises(DoorstepResponseError, match="HTTP 302"):
+        await client.stats()
+    assert client.url == BASE_URL
+
+
+async def test_moving_to_https_is_followed(
+    hass: HomeAssistant, aioclient_mock: AiohttpClientMocker
+) -> None:
+    aioclient_mock.get(
+        "http://doorstep.test/api/stats",
+        status=308,
+        headers={"Location": "https://doorstep.test/api/stats"},
+    )
+    aioclient_mock.get("https://doorstep.test/api/stats", json=STATS)
+    moves: list[str] = []
+    client = DoorstepClient(
+        async_get_clientsession(hass), "http://doorstep.test", on_moved=moves.append
+    )
+
+    assert await client.stats() == Stats(total=40, delivered=37)
+    assert moves == ["https://doorstep.test"]
+
+
+async def test_requests_in_flight_when_doorstep_moves_all_follow(
+    moved_doorstep: test_utils.TestServer,
+) -> None:
+    async with aiohttp.ClientSession() as session:
+        client = DoorstepClient(session, str(moved_doorstep.make_url("/mailroom")))
+
+        parcels, stats = await asyncio.gather(client.parcels(), client.stats())
+
+        assert stats == Stats(total=40, delivered=37)
+        assert len(parcels.current) == 2
+        assert client.url == str(moved_doorstep.make_url("/doorstep"))
